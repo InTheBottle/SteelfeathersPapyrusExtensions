@@ -10,6 +10,12 @@
 
 #include "Plugin.h"
 
+// spdlog includes <windows.h> without NOGDI, which defines GetObject as a macro and
+// breaks RE::InventoryEntryData::GetObject() under CommonLibSSE-NG.
+#ifdef GetObject
+#	undef GetObject
+#endif
+
 #define DLLEXPORT __declspec(dllexport)
 
 #ifndef NDEBUG
@@ -87,11 +93,3 @@ template <class T>
 inline constexpr bool always_false = false;
 
 #define SECTION_SEPARATOR logger::info("=========================================================="sv)
-
-#ifdef SKYRIM_AE
-#	define OFFSET(se, ae) ae
-#	define OFFSET_3(se, ae, vr) ae
-#else
-#	define OFFSET(se, ae) se
-#	define OFFSET_3(se, ae, vr) se
-#endif

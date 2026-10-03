@@ -5,6 +5,12 @@ namespace Papyrus
 	std::vector<int> GetVersion(STATIC_ARGS) {
 		return { Plugin::VERSION[0], Plugin::VERSION[1], Plugin::VERSION[2] };
 	}
+	static void OpenContainer(RE::TESObjectREFR* a_ref, std::int32_t a_openType)
+	{
+		using func_t = void (*)(const RE::TESObjectREFR*, std::int32_t);
+		static REL::Relocation<func_t> func{ RELOCATION_ID(50211, 51140) };
+		func(a_ref, a_openType);
+	}
 
 	//0 is regular item transfer, 1 is stealing from a container or corpse, 2 is pickpocketing, 3 is transfer as teammate
 	static bool OpenInventoryEx(STATIC_ARGS, RE::Actor* target, int type)
@@ -19,7 +25,7 @@ namespace Papyrus
 		{
 			type = 3;
 		}
-		target->RE::TESObjectREFR::OpenContainer(type);
+		OpenContainer(target, type);
 		return true;
 	}
 
@@ -396,16 +402,28 @@ namespace Papyrus
 
 	static RE::TESObjectREFR* GetCurrentCrosshairRef(STATIC_ARGS)
 	{
-		auto crosshair_data = RE::CrosshairPickData::GetSingleton();
-		if (crosshair_data && crosshair_data->target)
-		{
-			return crosshair_data->target.get().get();
+		auto* crosshair_data = RE::CrosshairPickData::GetSingleton();
+		if (!crosshair_data) {
+			return nullptr;
 		}
-		if (crosshair_data && crosshair_data->targetActor)
-		{
-			return crosshair_data->targetActor.get().get();
+
+		// CommonLibSSE-NG keeps one handle per VR device (flat runtimes only use slot 0).
+		// GetActiveTarget() picks the right slot; mirror its order for targetActor.
+		if (auto target = crosshair_data->GetActiveTarget(); target) {
+			return target.get().get();
 		}
-		return nullptr;
+
+		if (REL::Module::IsVR()) {
+			for (const auto& handle : crosshair_data->targetActor) {
+				if (handle) {
+					return handle.get().get();
+				}
+			}
+			return nullptr;
+		}
+
+		const auto& targetActor = crosshair_data->targetActor[0];
+		return targetActor ? targetActor.get().get() : nullptr;
 	}
 
 	static void Bind(VM& a_vm) {

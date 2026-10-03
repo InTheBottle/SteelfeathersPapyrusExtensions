@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.24)
 option(FULL_RELEASE "Finalizes the build, compressing everything into a BSA." OFF)
 option(COPY_SCRIPTS "Copies the resulting scripts (if present) into the release." ON)
 option(COPY_ARCHIVE "Copies the resulting archive (if present) into the release." OFF)
-option(OUTDATED "Applies 1.5.97 offsets/IDs." OFF)
 
 # -------- Project ----------
 project(
@@ -31,12 +30,11 @@ include(SKSEPlugin)
 set(SKSE_USE_XBYAK ON)
 add_compile_definitions(SKSE_SUPPORT_XBYAK)
 
-if(OUTDATED)
-	add_compile_definitions(SKYRIM_OUTDATED)
-else()
-	add_compile_definitions(SKYRIM_AE)
-	add_compile_definitions(SKYRIM_SUPPORT_AE)
-endif()
+set(SKSE_COMMONLIBSSE_PATH "External/CommonLibSSE-NG")
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ENABLE_SKYRIM_SE ON CACHE BOOL "" FORCE)
+set(ENABLE_SKYRIM_AE ON CACHE BOOL "" FORCE)
+set(ENABLE_SKYRIM_VR ON CACHE BOOL "" FORCE)
 
 SKSEPlugin_Add(
 	${PROJECT_NAME}
@@ -46,6 +44,12 @@ SKSEPlugin_Add(
 		vcpkg.json
 	PRECOMPILE_HEADERS
 		src/common/PCH.h
+)
+
+target_compile_definitions(
+		"${PROJECT_NAME}"
+		PRIVATE
+			NOMINMAX
 )
 
 set_target_properties(CommonLibSSE PROPERTIES
@@ -58,9 +62,7 @@ include(components.cmake)
 
 # ---- Post build ----
 if(DEFINED ENV{SKYRIM_MODS_FOLDER} AND IS_DIRECTORY "$ENV{SKYRIM_MODS_FOLDER}")
-	if(OUTDATED)
-		set(OUTPUT_FOLDER "$ENV{SKYRIM_MODS_FOLDER}/${PROJECT_NAME} - Outdated")
-	elseif (FULL_RELEASE)
+	if (FULL_RELEASE)
 		set(OUTPUT_FOLDER "$ENV{SKYRIM_MODS_FOLDER}/${PROJECT_NAME} - Full Release")
 	else()
 		set(OUTPUT_FOLDER "$ENV{SKYRIM_MODS_FOLDER}/${PROJECT_NAME} - Test")
